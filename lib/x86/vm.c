@@ -3,6 +3,7 @@
 #include "vmalloc.h"
 #include "alloc_page.h"
 #include "smp.h"
+#include "amd_sev.h"
 
 static pteval_t pte_opt_mask;
 
@@ -28,12 +29,16 @@ pteval_t *install_pte(pgd_t *cr3,
 	    pt[offset] = virt_to_phys(new_pt) | PT_PRESENT_MASK | PT_WRITABLE_MASK | pte_opt_mask;
 #ifdef CONFIG_EFI
 	    pt[offset] |= get_amd_sev_c_bit_mask();
+	    if (level == 2)
+		pt[offset] |= PT_GLOBAL_MASK;
 #endif /* CONFIG_EFI */
 	}
 	pt = phys_to_virt(pt[offset] & PT_ADDR_MASK);
     }
     offset = PGDIR_OFFSET((uintptr_t)virt, level);
     pt[offset] = pte;
+//    if (level == 2)
+//	pt[offset] |= PT_GLOBAL_MASK;
     return &pt[offset];
 }
 
@@ -197,6 +202,7 @@ void *setup_mmu(phys_addr_t end_of_memory, void *opt_mask)
     init_alloc_vpage((void*)(3ul << 30));
 #endif
 
+    setup_ghcb_pte(cr3);
     write_cr3(virt_to_phys(cr3));
 #ifndef __x86_64__
     write_cr4(X86_CR4_PSE);

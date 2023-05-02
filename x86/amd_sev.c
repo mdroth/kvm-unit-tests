@@ -14,7 +14,8 @@
 #include "x86/processor.h"
 #include "x86/amd_sev.h"
 #include "msr.h"
-
+#include "alloc_page.h"
+#include "x86/vm.h"
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
 
@@ -89,9 +90,45 @@ static void test_stringio(void)
 int main(void)
 {
 	int rtn;
+	pteval_t *pte;
 	rtn = test_sev_activation();
 	report(rtn == EXIT_SUCCESS, "SEV activation test.");
 	test_sev_es_activation();
 	test_stringio();
+	unsigned long addr;
+	addr = (unsigned long)alloc_page();
+	if (!addr)
+		printf("WARNING: Page not allocated!!\n");
+
+	printf("%s: 0x%lx, 0x%lx\n", __func__, read_cr3(), addr);
+
+        pte = get_pte((pgd_t *)read_cr3(), (void *)addr);
+        printf("%s pte obtained: 0x%lx\n", __func__,*pte);
+
+/*
+        if (!pte) {
+                printf("WARNING: %s: pte is null.\n", __func__);
+                assert(pte);
+        }
+*/
+
+        /* unset c-bit */
+        // *pte |= PT_GLOBAL_MASK;
+        // *pte &= ~(get_amd_sev_c_bit_mask());
+        // *pte |= PT_GLOBAL_MASK;
+        // printf("%s: pte(after unsetting c bit): 0x%lx\n", __func__, *pte);
+
+	printf("%s: 0x%lx, 0x%lx\n", __func__, read_cr3(), addr);
+
+        pte = get_pte((pgd_t *)read_cr3(), (void *)addr);
+        printf("%s pte obtained: 0x%lx\n", __func__,*pte);
+
+	/* Set c-bit */
+	*pte &= ~(get_amd_sev_c_bit_mask());
+	printf("%s: pte(after unsetting c bit): 0x%lx\n", __func__, *pte);
+
+	pte = get_pte((pgd_t *)read_cr3(), (void *)addr);
+	printf("%s: pte obtained: 0x%lx\n", __func__, *pte);
+
 	return report_summary();
 }
