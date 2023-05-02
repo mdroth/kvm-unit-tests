@@ -123,10 +123,10 @@ int main(void)
         pte = get_pte((pgd_t *)read_cr3(), (void *)addr);
         printf("%s pte obtained: 0x%lx\n", __func__,*pte);
 
-	/* Set c-bit */
+	/* Unset c-bit */
 	*pte &= ~(get_amd_sev_c_bit_mask());
 	printf("%s: pte(after unsetting c bit): 0x%lx\n", __func__, *pte);
-
+	/* Get the PTE here - reads garbage: May be reading an incorrect encrypted PTE? */
 	pte = get_pte((pgd_t *)read_cr3(), (void *)addr);
 	printf("%s: pte obtained: 0x%lx\n", __func__, *pte);
 
